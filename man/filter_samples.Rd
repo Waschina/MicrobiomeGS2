@@ -11,6 +11,8 @@ filter_samples(object, min.seqs = 5000, max.unclassified = 0.3)
 
 \item{max.unclassified}{double. Maximum proportion of counts, that correspond
 to unclassified ASVs/OTUs, i.e. not mapped to any reference genome/model.}
+
+\item{mic}{A Microbiome object.}
 }
 \description{
 Filter samples

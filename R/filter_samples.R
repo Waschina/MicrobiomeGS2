@@ -1,5 +1,6 @@
 #' @title Filter samples
 #'
+#' @param mic A Microbiome object.
 #' @param min.seqs integer. Minimum count of total ASVs/OTUs per sample.
 #' @param max.unclassified double. Maximum proportion of counts, that correspond
 #' to unclassified ASVs/OTUs, i.e. not mapped to any reference genome/model.
