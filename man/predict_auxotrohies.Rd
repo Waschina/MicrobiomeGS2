@@ -29,7 +29,7 @@ Named numeric vector with the same length and order as `compounds`.
 Entry of 1 indicates prototrophy and 0 auxotrophy.
 }
 \description{
-Performs an FBA on the input model and on the model, where the
+Performs a FBA on the input model and on the model, where the
 lower bound (i.e. influx) of the compounds is set each (individually) to 0,
 and growth rates are compared.
 }

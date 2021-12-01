@@ -622,7 +622,8 @@ addMultiReact <- function(model,
 #' @export
 get_coupling_constraints_mult <- function(modj, cpl_c = 400, cpl_u = 0.01) {
   coupling <- list(react=list(), x=list(), lb=vector(), ub=vector(), rtype=vector())
-  intern_rea  <- grep("EX_", modj@react_id, invert = T)
+  #intern_rea  <- grep("EX_", modj@react_id, invert = T)
+  intern_rea  <- 1:modj@react_num
   allObj.ind  <- grep("^M[0-9]+_bio1",modj@react_id)
 
   m.obj.dt <- data.table(m.id = paste0("M",1:length(allObj.ind)),
@@ -640,7 +641,7 @@ get_coupling_constraints_mult <- function(modj, cpl_c = 400, cpl_u = 0.01) {
                               , names = NULL)
   coupling$x <- structure(as.list(as.data.frame(apply(dt.cpl, 1, FUN = function(x) c(1,ifelse(x["dir"]=="U",-cpl_c,cpl_c)))))
                           , names = NULL)
-  coupling$lb <- dt.cpl[,ifelse(dir=="L",cpl_u,NA_real_)] ## check this: shouln't it be -cpl_u?
+  coupling$lb <- dt.cpl[,ifelse(dir=="L",-cpl_u,NA_real_)] ## check this: Yes: Definitely "-cpl_u"
   coupling$ub <- dt.cpl[,ifelse(dir=="U",cpl_u,NA_real_)]
   coupling$rtype <- dt.cpl[,dir]
 
@@ -662,6 +663,7 @@ communityFBA_FB <- function(models, model.prop, scale.boundaries = 1,
                             lp.method = "hybbaropt") {
 
   sybil::SYBIL_SETTINGS("METHOD", lp.method)
+  sybil::SYBIL_SETTINGS("SOLVER","cplexAPI")
 
   model.prop <- model.prop/(sum(model.prop))
   spec.ratio <- data.table(spec  = unlist(lapply(models, function(x) x@mod_id)),
