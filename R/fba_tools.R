@@ -206,7 +206,7 @@ get_utilized_metabolites <- function(mod) {
 #'
 #' @param mod Model of class `modelorg`
 #' @param exclude.unused Exclude reactions with zero fluxes from output table.
-#' @param algorithm character. Algorith to use to calculate flux distribution.
+#' @param algorithm character. Algorithm to use to calculate flux distribution.
 #' Parameter is passed on to \link[sybil]{optimizeProb}.
 #'
 #' @return A data.table with columns: `rxn` - reaction ID, `flux` - predicted flux, and additional reaction attributes.
@@ -333,14 +333,14 @@ get_essential_nutrients <- function(mod, min.growth.fraction = 0.01) {
 
   for(i in 1:nrow(out.dt)) {
     mod_tmp <- changeBounds(mod, react = out.dt[i, ex.rxn], lb = 0)
-    sol_tmp <- get.mod.growth(mod_tmp)
+    sol_tmp <- get_growth(mod_tmp)
 
     out.dt[i, growth.rate.wo.met := sol_tmp]
     out.dt[i, growth.fraction := sol_tmp/orig.growth]
   }
 
   out.dt[, essential := F]
-  out.dt[growth.fraction < min.growth.fraction, essential := T]
+  out.dt[growth.fraction < min.growth.fraction, essential := T][]
 
   return(out.dt)
 }
@@ -453,3 +453,92 @@ get_mod_namespace <- function(mod) {
 
   return(nasp)
 }
+
+
+#' Get all exchange flux values
+#'
+#' @description Performs FBA(-MTF) to predict fluxes of metabolite exchange
+#' reactions
+#'
+#' @slot model Model file of class `modelorg`, or a named-list of `modelorg`
+#' objects.
+#' @slot algorithm Algorithm to use to calculate flux distribution. Either 'mtf'
+#' or 'fba'.
+#' @slot combine.compounds list of character vectors. Optional. This option can
+#' be used to add up the exchange fluxes of specific compounds. This for instance
+#' makes sense for enantiomers such as D- and L-Lactate, which ist also set as
+#' default and example.
+#'
+#' @return A data.table, with the columns: 'model' for model ID, 'rxn' for the
+#' ID if the exchange reaction, 'flux' for the predicted flux value, 'in.model'
+#' specifying if the exchange reaction is part of the model (TRUE) or
+#' if absent (FALSE), 'name' for metabolite names.
+#'
+#' @details
+#' In case an exchange reaction is not part of one model but present in another
+#' model of the input models, a flux value of 0 is indicated.
+#'
+#' @export
+get_exchanges <- function(model, algorithm = "mtf",
+                          combine.compounds = list(`DL-Lactate` = c("EX_cpd00159_e0",
+                                                                    "EX_cpd00221_e0"))) {
+  if(is.list(model)) {
+    if(!all(unlist(lapply(model, class)) == "modelorg"))
+      stop("Not all models in list are of type 'modelorg'")
+    if(is.null(names(model)))
+      stop("Model list is not a named list.")
+    if(any(is.na(names(model))))
+      stop("Not all items in the list of models are named.")
+  } else {
+    if(class(model) != "modelorg")
+      stop("model is not of class 'modelorg'")
+    model <- list(model)
+    names(model)[1] <- model[[1]]@mod_id
+  }
+
+  flx <- lapply(model, FUN = function(mod) {
+    flxtmp <- get_flux_distribution(mod, exclude.unused = F,
+                                    algorithm = algorithm)
+    flxtmp <- flxtmp[grepl("^EX", rxn), .(rxn, flux)]
+    flxtmp$name <- mod@react_name[match(flxtmp$rxn, mod@react_id)]
+    flxtmp <- flxtmp[rxn != "EX_cpd11416_c0"] # that's the biomass
+    flxtmp[, name := gsub("-e0 Exchange$| Exchange","", name)]
+
+    return(flxtmp)
+  })
+  flx <- rbindlist(flx, idcol = "model")
+
+  # save metabolite ids and names
+  metinfo <- copy(flx[!duplicated(rxn), .(rxn, name)])
+
+  # extent to have all model ~ exchange combinations
+  flx <- dcast(flx, formula = model ~ rxn, value.var = "flux")
+  flx <- melt(flx, id.vars = "model", variable.name = "rxn",
+              value.name = "flux")
+  flx[, in.model := TRUE]
+  flx[is.na(flux), in.model := FALSE]
+  flx[is.na(flux), flux := 0]
+
+  # re-add metabolite names
+  flx <- merge(flx, metinfo, by = "rxn")
+
+  # combine compound fluxes (if applicable)
+  if(!is.null(combine.compounds)) {
+    if(length(combine.compounds) > 0) {
+      for(icpd in 1:length(combine.compounds)) {
+        # assign only one id
+        flx[rxn %in% combine.compounds[[icpd]],
+            rxn := combine.compounds[[icpd]][1]]
+        # assign new name
+        flx[rxn %in% combine.compounds[[icpd]],
+            name := names(combine.compounds)[icpd]]
+      }
+
+      # sum fluxes for combined compounds
+      flx <- flx[, .(flux = sum(flux)), by = .(model, rxn, in.model, name)]
+    }
+  }
+
+  return(flx)
+}
+

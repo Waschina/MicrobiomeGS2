@@ -11,7 +11,7 @@ get_flux_distribution(mod, exclude.unused = T, algorithm = "mtf")
 
 \item{exclude.unused}{Exclude reactions with zero fluxes from output table.}
 
-\item{algorithm}{character. Algorith to use to calculate flux distribution.
+\item{algorithm}{character. Algorithm to use to calculate flux distribution.
 Parameter is passed on to \link[sybil]{optimizeProb}.}
 }
 \value{
