@@ -466,7 +466,7 @@ get_mod_namespace <- function(mod) {
 #' or 'fba'.
 #' @slot combine.compounds list of character vectors. Optional. This option can
 #' be used to add up the exchange fluxes of specific compounds. This for instance
-#' makes sense for enantiomers such as D- and L-Lactate, which ist also set as
+#' makes sense for enantiomers such as D- and L-Lactate, which is also set as
 #' default and example.
 #'
 #' @return A data.table, with the columns: 'model' for model ID, 'rxn' for the
@@ -535,7 +535,8 @@ get_exchanges <- function(model, algorithm = "mtf",
       }
 
       # sum fluxes for combined compounds
-      flx <- flx[, .(flux = sum(flux)), by = .(model, rxn, in.model, name)]
+      flx <- flx[, .(flux = sum(flux), in.model = any(in.model)),
+                 by = .(model, rxn, in.model, name)]
     }
   }
 

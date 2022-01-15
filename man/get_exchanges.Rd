@@ -34,8 +34,8 @@ objects.}
 or 'fba'.}
 
 \item{\code{combine.compounds}}{list of character vectors. Optional. This option can
-be used to add up the exchange fluxes of specific compound. This for instance
-makes sense of enantiomers as for D- and L-Lactate, which ist also set as default
-and example.}
+be used to add up the exchange fluxes of specific compounds. This for instance
+makes sense for enantiomers such as D- and L-Lactate, which is also set as
+default and example.}
 }}
 
