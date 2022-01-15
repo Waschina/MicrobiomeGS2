@@ -536,7 +536,7 @@ get_exchanges <- function(model, algorithm = "mtf",
 
       # sum fluxes for combined compounds
       flx <- flx[, .(flux = sum(flux), in.model = any(in.model)),
-                 by = .(model, rxn, in.model, name)]
+                 by = .(model, rxn, name)]
     }
   }
 
