@@ -52,7 +52,11 @@ print_reaction <- function(mod, react, use.ids = FALSE) {
       product = ""
     }
 
-    arrow   <- ifelse(react_rev(mod)[cind[j]], " <==> ", " --> ")
+    arrow <- " <==> "
+    if(mod@lowbnd[cind[j]] >= 0 & mod@uppbnd[cind[j]] > 0)
+      arrow <- " --> "
+    if(mod@lowbnd[cind[j]] < 0 & mod@uppbnd[cind[j]] <= 0)
+      arrow <- " <-- "
 
     reaction[j] <- paste(educt, product, sep = arrow)
   }
