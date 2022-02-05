@@ -36,8 +36,8 @@ auxotrophy_frequencies <- function(mic,
   names(models) <- mod_ids
 
   model_auxo <- parLapply(cl, models, function(mod) {
-    auxtmp <- predict_auxotrohies(mod, compounds, min.growth,
-                                  min.growth.fraction)
+    auxtmp <- predict_auxotrophies(mod, compounds, min.growth,
+                                   min.growth.fraction)
     return(auxtmp)
   })
 

@@ -4,10 +4,13 @@
 \alias{get_produced_metabolites}
 \title{Get produced metabolites}
 \usage{
-get_produced_metabolites(mod)
+get_produced_metabolites(mod, easyConstraints = NULL)
 }
 \arguments{
 \item{mod}{Model object of class `modelorg`}
+
+\item{easyConstraints}{Additional constraints. See easyConstraints in the sybil
+documentation.}
 }
 \value{
 data.table with predicted production rate and flux ranges. Columns: `ex` - exchange reaction ID,
@@ -19,5 +22,7 @@ Predicts metabolite production using MTF-FBA and FVA.
 \details{
 Ranges (`l` & `u`) are based on a FVA-derived method. This method attempts to prevent cases where a
 nutrient is taken up from the environment, transformed to another compound that is produced, but without any
-contribution to the organism's growth rate.
+contribution to the organism's growth rate. When providing additional
+constraints, please note that these constraints are not (yet) applied for the
+flux variability analysis.
 }

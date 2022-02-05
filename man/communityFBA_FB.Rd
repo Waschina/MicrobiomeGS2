@@ -15,6 +15,12 @@ communityFBA_FB(
 )
 }
 \arguments{
+\item{models}{List of models of class `modelorg`.}
+
+\item{model.prop}{Vector of relative proportions of each model's biomass in
+the total community biomass. Should be of the same length as number of
+models.}
+
 \item{scale.boundaries}{Factor (x) that scaled the lower bounds of Exchange Reactions. Experimental, thus it is recommended to use the default: 1 (no scaling).}
 
 \item{cpl_c}{Coupling constraint \code{c}. See Heinken et al (2013) Gut Microbes (doi: 10.4161/gmic.22370). Default: 400}

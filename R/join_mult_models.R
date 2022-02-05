@@ -651,6 +651,10 @@ get_coupling_constraints_mult <- function(modj, cpl_c = 400, cpl_u = 0.01) {
 
 #' @title Community FBA with fixed biomass ratios
 #'
+#' @param models List of models of class `modelorg`.
+#' @param model.prop Vector of relative proportions of each model's biomass in
+#' the total community biomass. Should be of the same length as number of
+#' models.
 #' @param pFBAcoeff parsimonious FBA coefficient that corresponds to the weight of absolute flux values relative to the biomass mass production.
 #' @param lp.method Solver algorith to use. Default: hybbaropt.
 #' @param scale.boundaries Factor (x) that scaled the lower bounds of Exchange Reactions. Experimental, thus it is recommended to use the default: 1 (no scaling).
@@ -721,7 +725,7 @@ communityFBA_FB <- function(models, model.prop, scale.boundaries = 1,
 }
 
 #
-# Get a quantitive measure for the metabolic interchange of individual metabolites
+# Get a quantitative measure for the metabolic interchange of individual metabolites
 #
 get_metabolic_interchange <- function(modj, solj) {
   int.ext.rxns <- grep("^M[0-9]+_EX_",modj@react_id)

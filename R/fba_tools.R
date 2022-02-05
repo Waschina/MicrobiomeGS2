@@ -19,8 +19,8 @@
 #' @import sybil
 #'
 #' @export
-predict_auxotrohies <- function(mod, compounds = NULL, min.growth = 0.005,
-                                min.growth.fraction = 0.05) {
+predict_auxotrophies <- function(mod, compounds = NULL, min.growth = 0.005,
+                                 min.growth.fraction = 0.05) {
   if("cplexAPI" %in% rownames(utils::installed.packages())) {
     lpsolver <- "cplexAPI"
     SYBIL_SETTINGS("SOLVER",lpsolver)
@@ -118,22 +118,34 @@ get_growth <- function(mod) {
 #' @description Predicts metabolite production using MTF-FBA and FVA.
 #'
 #' @param mod Model object of class `modelorg`
+#' @param easyConstraints Additional constraints. See easyConstraints in the sybil
+#' documentation.
 #'
 #' @return data.table with predicted production rate and flux ranges. Columns: `ex` - exchange reaction ID,
 #' `rxn.name` - exchange reaction name, `l` - lower bound of reaction flux, `u` - upper bound, `mtf.flux` - predicted production flux.
 #'
 #' @details Ranges (`l` & `u`) are based on a FVA-derived method. This method attempts to prevent cases where a
 #' nutrient is taken up from the environment, transformed to another compound that is produced, but without any
-#' contribution to the organism's growth rate.
+#' contribution to the organism's growth rate. When providing additional
+#' constraints, please note that these constraints are not (yet) applied for the
+#' flux variability analysis.
 #'
 #' @export
-get_produced_metabolites <- function(mod) {
+get_produced_metabolites <- function(mod, easyConstraints = NULL) {
 
   # get MTF solution
-  #rxn.coef <- ifelse(mod@react_attr$status %in% c("good_blast",NA,"no_seq_data"),1,1)
-  sol.mtf <- optimizeProb(mod, algorithm = "mtf")
+  if(!is.null(easyConstraints)) {
+    mod_warm <- sysBiolAlg(mod,
+                           algorithm = "mtfEasyConstraint",
+                           easyConstraint = easyConstraints)
+  } else {
+    mod_warm <- sysBiolAlg(mod,
+                           algorithm = "mtf")
+  }
+
+  sol.mtf <- optimizeProb(mod_warm)
   dt.mtf  <- data.table(ex = mod@react_id,
-                        mtf.flux = sol.mtf@fluxdist@fluxes[1:mod@react_num])
+                        mtf.flux = sol.mtf$fluxes[1:mod@react_num])
   dt.mtf.tmp <- copy(dt.mtf[grepl("^EX_", ex)])
 
   # this following two lines are there to prevent the case that a nutrient (e.g. L-Lactate)
@@ -163,19 +175,30 @@ get_produced_metabolites <- function(mod) {
 #' @description Predicts metabolite consumption using MTF-FBA and FVA.
 #'
 #' @param mod Model object of class `modelorg`
+#' @param easyConstraints Additional constraints. See easyConstraints in the sybil
+#' documentation.
 #'
 #' @return data.table with predicted consumption rate and flux ranges. Columns: `ex` - exchange reaction ID,
 #' `rxn.name` - exchange reaction name, `l` - lower bound of reaction flux, `u` - upper bound, `mtf.flux` - predicted utilization flux,
 #' `flux.at.limit` - character specifying if the uptake is at it's constraint limit. "*" if at limit and "" if not at limit.
-#'
+#' When providing additional constraints, please note that these constraints are
+#' not (yet) applied for the flux variability analysis.
 #' @export
-get_utilized_metabolites <- function(mod) {
+get_utilized_metabolites <- function(mod, easyConstraints = NULL) {
 
   # get MTF solution
-  #rxn.coef <- ifelse(mod@react_attr$status %in% c("good_blast",NA,"no_seq_data"),1,1)
-  sol.mtf <- optimizeProb(mod, algorithm = "mtf")
+  if(!is.null(easyConstraints)) {
+    mod_warm <- sysBiolAlg(mod,
+                           algorithm = "mtfEasyConstraint",
+                           easyConstraint = easyConstraints)
+  } else {
+    mod_warm <- sysBiolAlg(mod,
+                           algorithm = "mtf")
+  }
+
+  sol.mtf <- optimizeProb(mod_warm)
   dt.mtf  <- data.table(ex = mod@react_id,
-                        mtf.flux = sol.mtf@fluxdist@fluxes[1:mod@react_num],
+                        mtf.flux = sol.mtf$fluxes[1:mod@react_num],
                         lb = mod@lowbnd)
   dt.mtf.tmp <- copy(dt.mtf[grepl("^EX_", ex)])
   dt.mtf.tmp[mtf.flux < 0, mtf.flux := 0]
@@ -460,11 +483,11 @@ get_mod_namespace <- function(mod) {
 #' @description Performs FBA(-MTF) to predict fluxes of metabolite exchange
 #' reactions
 #'
-#' @slot model Model file of class `modelorg`, or a named-list of `modelorg`
+#' @param model Model file of class `modelorg`, or a named-list of `modelorg`
 #' objects.
-#' @slot algorithm Algorithm to use to calculate flux distribution. Either 'mtf'
+#' @param algorithm Algorithm to use to calculate flux distribution. Either 'mtf'
 #' or 'fba'.
-#' @slot combine.compounds list of character vectors. Optional. This option can
+#' @param combine.compounds list of character vectors. Optional. This option can
 #' be used to add up the exchange fluxes of specific compounds. This for instance
 #' makes sense for enantiomers such as D- and L-Lactate, which is also set as
 #' default and example.

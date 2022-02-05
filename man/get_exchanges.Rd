@@ -10,6 +10,18 @@ get_exchanges(
   combine.compounds = list(`DL-Lactate` = c("EX_cpd00159_e0", "EX_cpd00221_e0"))
 )
 }
+\arguments{
+\item{model}{Model file of class `modelorg`, or a named-list of `modelorg`
+objects.}
+
+\item{algorithm}{Algorithm to use to calculate flux distribution. Either 'mtf'
+or 'fba'.}
+
+\item{combine.compounds}{list of character vectors. Optional. This option can
+be used to add up the exchange fluxes of specific compounds. This for instance
+makes sense for enantiomers such as D- and L-Lactate, which is also set as
+default and example.}
+}
 \value{
 A data.table, with the columns: 'model' for model ID, 'rxn' for the
 ID if the exchange reaction, 'flux' for the predicted flux value, 'in.model'
@@ -24,18 +36,3 @@ reactions
 In case an exchange reaction is not part of one model but present in another
 model of the input models, a flux value of 0 is indicated.
 }
-\section{Slots}{
-
-\describe{
-\item{\code{model}}{Model file of class `modelorg`, or a named-list of `modelorg`
-objects.}
-
-\item{\code{algorithm}}{Algorithm to use to calculate flux distribution. Either 'mtf'
-or 'fba'.}
-
-\item{\code{combine.compounds}}{list of character vectors. Optional. This option can
-be used to add up the exchange fluxes of specific compounds. This for instance
-makes sense for enantiomers such as D- and L-Lactate, which is also set as
-default and example.}
-}}
-

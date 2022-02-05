@@ -4,15 +4,20 @@
 \alias{get_utilized_metabolites}
 \title{Get utilized metabolites}
 \usage{
-get_utilized_metabolites(mod)
+get_utilized_metabolites(mod, easyConstraints = NULL)
 }
 \arguments{
 \item{mod}{Model object of class `modelorg`}
+
+\item{easyConstraints}{Additional constraints. See easyConstraints in the sybil
+documentation.}
 }
 \value{
 data.table with predicted consumption rate and flux ranges. Columns: `ex` - exchange reaction ID,
 `rxn.name` - exchange reaction name, `l` - lower bound of reaction flux, `u` - upper bound, `mtf.flux` - predicted utilization flux,
 `flux.at.limit` - character specifying if the uptake is at it's constraint limit. "*" if at limit and "" if not at limit.
+When providing additional constraints, please note that these constraints are
+not (yet) applied for the flux variability analysis.
 }
 \description{
 Predicts metabolite consumption using MTF-FBA and FVA.
