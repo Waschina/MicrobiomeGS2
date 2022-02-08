@@ -85,3 +85,110 @@ get_reaction_table <- function(mod) {
   return(dt)
 
 }
+
+#' @title Pathway coverage
+#'
+#' @description Analyses a pathway by stating which reactions are part of a
+#' model and which not. Works only for gapseq reconstructions.
+#'
+#' @param models Object of class `modelorg` or list of `modelorg` objects.
+#' @param reactions data.table or list of data.table for gapseq predictions
+#' (files: *-all-Reactions.tbl). See example.
+#' @param pathways data.table or list of data.table for gapseq predictions
+#' (files: *-all-Pathways.tbl). See example.
+#' @param pathways.of.interest character vector of pathway IDs to be tested for
+#' coverage. If 'NULL', all pathways in 'pathways' are considered.
+#'
+#' @return Returns a data.table. See details
+#'
+#' @details The output data.table has the columns: pathway (Pathway-ID),
+#' rxn.metacyc (Reaction within pathway), rxn.name (Reaction name), spontaneous
+#' (TRUE if reaction is non-enzymatic), rxns.models (reaction ids in the model),
+#' prediction (TRUE if reaction is present in the model).<br>
+#' Please note that he order of objects in models, reactions, and pathways are
+#' required to be the same with respect to the models.
+#'
+#' @examples
+#' mods <- fetch_model_collection("/mnt/nuuk/2021/HRGM/models/", subset = 100)
+#' rxns <- fetch_model_collection("/mnt/nuuk/2021/HRGM/models/",
+#'                                file.type = "reactions", subset = 100)
+#' pwys <- fetch_model_collection("/mnt/nuuk/2021/HRGM/models/",
+#'                                file.type = "pathways", subset = 100)
+#'
+#' pwys_cov <- get_pathway_coverage(mods, rxns, pwys,
+#'                                  pathways.of.interest = c("TRPSYN-PWY",
+#'                                                           "TRPSYN-PWY2",
+#'                                                           "HISTSYN-PWY"))
+#'
+#' @export
+get_pathway_coverage <- function(models, reactions, pathways,
+                                 pathways.of.interest = NULL) {
+
+  if(class(models) == "modelorg") {
+    models    <- list(models)
+    reactions <- list(reactions)
+    pathways  <- list(pathways)
+    names(models) <- models[[1]]@mod_id
+  }
+
+  if(length(models) != length(reactions) | length(models) != length(pathways))
+    stop("Input objects models/reactions/pathways are of differnt lengths.")
+
+  # remove leading and trailing pipes in pathway IDs
+  reactions <- lapply(reactions, FUN = function(x) {
+    x[, pathway := gsub("^\\||\\|$","", pathway)]
+    x[]
+    return(x)
+  })
+  pathways <- lapply(pathways, FUN = function(x) {
+    x[, ID := gsub("^\\||\\|$","", ID)]
+    x[]
+    return(x)
+  })
+
+  tmp_cov <- lapply(1:length(models), FUN = function(j) {
+    mod <- models[[j]]
+    rxn <- reactions[[j]]
+    pwy <- pathways[[j]]
+
+    # Pathways of interest
+    pwyOI <- pathways.of.interest
+    if(is.null(pwyOI))
+      pwyOI <- unique(rxn$pathway)
+    tmp_pwy <- copy(rxn[pathway %in% pwyOI])
+    tmp_pwy <- tmp_pwy[!duplicated(paste(rxn, pathway, sep = "$"))]
+
+    # get which reactions are in the model
+    rxns.in.model <- mod@react_id
+    rxns.in.model <- rxns.in.model[grepl("^rxn", rxns.in.model)]
+    rxns.in.model <- gsub("_.0$","", rxns.in.model)
+
+    # init output table
+    out_pwycov <- copy(tmp_pwy[,.(pathway,
+                                  rxn.metacyc = rxn,
+                                  rxn.name = name,
+                                  spontaneous = status == "spontaneous",
+                                  rxns.model = NA_character_,
+                                  prediction = FALSE)])
+
+    # checking reaction presence
+    for(i in 1:nrow(tmp_pwy)) {
+      ms.rxn <- unlist(strsplit(tmp_pwy[i, dbhit], " "))
+      ms.rxn <- ms.rxn[ms.rxn %in% rxns.in.model]
+      out_pwycov[i, rxns.model := paste(ms.rxn, collapse = " ")]
+    }
+    out_pwycov[spontaneous == TRUE, prediction := TRUE]
+    out_pwycov[spontaneous == FALSE, prediction := ifelse(rxns.model != "" & !is.na(rxns.model),TRUE,FALSE)]
+    out_pwycov <- merge(out_pwycov, pwy[, .(pathway = ID, pathway.name = Name)],
+                        by = "pathway")
+
+
+    return(out_pwycov)
+  })
+  names(tmp_cov) <- names(models)
+
+  tmp_cov <- rbindlist(tmp_cov, idcol = "model")
+
+
+  return(tmp_cov)
+}
