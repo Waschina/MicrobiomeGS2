@@ -98,6 +98,8 @@ get_reaction_table <- function(mod) {
 #' (files: *-all-Pathways.tbl). See example.
 #' @param pathways.of.interest character vector of pathway IDs to be tested for
 #' coverage. If 'NULL', all pathways in 'pathways' are considered.
+#' @param multi.thread logical. Indicating if parallel processing of models is
+#' used.
 #'
 #' @return Returns a data.table. See details
 #'
@@ -120,9 +122,13 @@ get_reaction_table <- function(mod) {
 #'                                                           "TRPSYN-PWY2",
 #'                                                           "HISTSYN-PWY"))
 #'
+#' @import data.table
+#' @import sybil
+#'
 #' @export
 get_pathway_coverage <- function(models, reactions, pathways,
-                                 pathways.of.interest = NULL) {
+                                 pathways.of.interest = NULL,
+                                 multi.thread = TRUE) {
 
   if(class(models) == "modelorg") {
     models    <- list(models)
@@ -134,61 +140,91 @@ get_pathway_coverage <- function(models, reactions, pathways,
   if(length(models) != length(reactions) | length(models) != length(pathways))
     stop("Input objects models/reactions/pathways are of differnt lengths.")
 
+  # parallel processing?
+  n.cores <- ifelse(multi.thread, detectCores()-1, 1)
+  n.cores <- min(c(n.cores, length(models)))
+  cl <- makeCluster(max(c(1,n.cores)))
+  clusterExport(cl, c("pathways.of.interest"), envir=environment())
+
   # remove leading and trailing pipes in pathway IDs
-  reactions <- lapply(reactions, FUN = function(x) {
-    x[, pathway := gsub("^\\||\\|$","", pathway)]
-    x[]
-    return(x)
+  reactions <- parLapply(cl, reactions, fun = worker_filter_reactions)
+  pathways <- parLapply(cl, pathways, fun = worker_filter_pathways)
+
+  # construct combined object lists
+  combObj <- lapply(1:length(models), FUN = function(k) {
+    list(mod = models[[k]],
+         rxn = reactions[[k]],
+         pwy = pathways[[k]])
   })
-  pathways <- lapply(pathways, FUN = function(x) {
-    x[, ID := gsub("^\\||\\|$","", ID)]
-    x[]
-    return(x)
-  })
+  names(combObj) <- names(models)
 
-  tmp_cov <- lapply(1:length(models), FUN = function(j) {
-    mod <- models[[j]]
-    rxn <- reactions[[j]]
-    pwy <- pathways[[j]]
-
-    # Pathways of interest
-    pwyOI <- pathways.of.interest
-    if(is.null(pwyOI))
-      pwyOI <- unique(rxn$pathway)
-    tmp_pwy <- copy(rxn[pathway %in% pwyOI])
-    tmp_pwy <- tmp_pwy[!duplicated(paste(rxn, pathway, sep = "$"))]
-
-    # get which reactions are in the model
-    rxns.in.model <- mod@react_id
-    rxns.in.model <- rxns.in.model[grepl("^rxn", rxns.in.model)]
-    rxns.in.model <- gsub("_.0$","", rxns.in.model)
-
-    # init output table
-    out_pwycov <- copy(tmp_pwy[,.(pathway,
-                                  rxn.metacyc = rxn,
-                                  rxn.name = name,
-                                  spontaneous = status == "spontaneous",
-                                  rxns.model = NA_character_,
-                                  prediction = FALSE)])
-
-    # checking reaction presence
-    for(i in 1:nrow(tmp_pwy)) {
-      ms.rxn <- unlist(strsplit(tmp_pwy[i, dbhit], " "))
-      ms.rxn <- ms.rxn[ms.rxn %in% rxns.in.model]
-      out_pwycov[i, rxns.model := paste(ms.rxn, collapse = " ")]
-    }
-    out_pwycov[spontaneous == TRUE, prediction := TRUE]
-    out_pwycov[spontaneous == FALSE, prediction := ifelse(rxns.model != "" & !is.na(rxns.model),TRUE,FALSE)]
-    out_pwycov <- merge(out_pwycov, pwy[, .(pathway = ID, pathway.name = Name)],
-                        by = "pathway")
-
-
-    return(out_pwycov)
-  })
-  names(tmp_cov) <- names(models)
+  tmp_cov <- parLapply(cl, combObj, fun = worker_pathway_cov)
+  stopCluster(cl)
 
   tmp_cov <- rbindlist(tmp_cov, idcol = "model")
 
 
   return(tmp_cov)
+}
+
+
+#' @import data.table
+worker_filter_pathways <- function(x) {
+  x[, ID := gsub("^\\||\\|$","", ID)]
+  if(!is.null(pathways.of.interest))
+    x[ID %in% pathways.of.interest]
+  x[]
+  return(x)
+}
+
+#' @import data.table
+worker_filter_reactions <- function(x) {
+  x[, pathway := gsub("^\\||\\|$","", pathway)]
+  if(!is.null(pathways.of.interest))
+    x[pathway %in% pathways.of.interest]
+  x[]
+  return(x)
+}
+
+#' @import sybil
+#' @import data.table
+worker_pathway_cov <- function(co) {
+  mod <- co$mod
+  rxn <- co$rxn
+  pwy <- co$pwy
+
+  # Pathways of interest
+  pwyOI <- pathways.of.interest
+  if(is.null(pwyOI))
+    pwyOI <- unique(rxn$pathway)
+  tmp_pwy <- copy(rxn[pathway %in% pwyOI])
+  tmp_pwy <- tmp_pwy[!duplicated(paste(rxn, pathway, sep = "$"))]
+
+  # get which reactions are in the model
+  rxns.in.model <- mod@react_id
+  rxns.in.model <- rxns.in.model[grepl("^rxn", rxns.in.model)]
+  rxns.in.model <- gsub("_.0$","", rxns.in.model)
+
+  # init output table
+  out_pwycov <- copy(tmp_pwy[,.(pathway,
+                                rxn.metacyc = rxn,
+                                rxn.name = name,
+                                ec = ec,
+                                spontaneous = status == "spontaneous",
+                                rxns.model = NA_character_,
+                                prediction = FALSE)])
+
+  # checking reaction presence
+  for(i in 1:nrow(tmp_pwy)) {
+    ms.rxn <- unlist(strsplit(tmp_pwy[i, dbhit], " "))
+    ms.rxn <- ms.rxn[ms.rxn %in% rxns.in.model]
+    out_pwycov[i, rxns.model := paste(ms.rxn, collapse = " ")]
+  }
+  out_pwycov[spontaneous == TRUE, prediction := TRUE]
+  out_pwycov[spontaneous == FALSE, prediction := ifelse(rxns.model != "" & !is.na(rxns.model),TRUE,FALSE)]
+  out_pwycov <- merge(out_pwycov, pwy[, .(pathway = ID, pathway.name = Name)],
+                      by = "pathway")
+
+
+  return(out_pwycov)
 }

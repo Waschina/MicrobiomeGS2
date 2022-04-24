@@ -2,9 +2,9 @@
 #'
 #' @description Performs a FBA on the input model and on the model, where the
 #' lower bound (i.e. influx) of the compounds is set each (individually) to 0,
-#' and growth rates are compared.
+#' and growth rates are compared. Works currently only for gapseq models.
 #'
-#' @param mod Model of type `modelorg`
+#' @param mod Model of class `modelorg` or a named list of these objects.
 #' @param compounds character. IDs of the model compound whose lower bound
 #' should be set to 0 in order to test its essentiality. No suffix for the
 #' external compartment is required.
@@ -12,24 +12,42 @@
 #' @param min.growth.fraction double. Minimum growth fraction of the model
 #' without the compound relative to the original model that is required to call
 #' the model prototrophic for the compound.
+#' @param multi.thread logical. Indicating if parallel processing of models is
+#' used.
 #'
 #' @return Named numeric vector with the same length and order as `compounds`.
 #' Entry of 1 indicates prototrophy and 0 auxotrophy.
 #'
 #' @import sybil
+#' @import parallel
 #'
 #' @export
 predict_auxotrophies <- function(mod, compounds = NULL, min.growth = 0.005,
-                                 min.growth.fraction = 0.05) {
-  if("cplexAPI" %in% rownames(utils::installed.packages())) {
-    lpsolver <- "cplexAPI"
-    SYBIL_SETTINGS("SOLVER",lpsolver)
-    okcode   <- 1
+                                 min.growth.fraction = 0.05,
+                                 multi.thread = TRUE) {
+
+  single_mode <- FALSE
+
+  if(is.list(mod)) {
+    if(!all(unlist(lapply(mod, class)) == "modelorg"))
+      stop("Not all models in list are of type 'modelorg'")
+    if(is.null(names(mod)))
+      stop("Model list is not a named list.")
+    if(any(is.na(names(mod))))
+      stop("Not all items in the list of models are named.")
+  } else {
+    if(class(mod) != "modelorg")
+      stop("mod is not of class 'modelorg'")
+    mod <- list(mod)
+    names(mod)[1] <- mod[[1]]@mod_id
+    single_mode <- TRUE
   }
 
-  if(!any(grepl("cpd00002",mod@met_id))) {
-    stop("Model is not in modelseed/gapseq namespace. Predictions currently work only for those types.")
-  }
+  # parallel processing?
+  n.cores <- ifelse(multi.thread, detectCores()-1, 1)
+  n.cores <- min(c(n.cores, length(mod)))
+  cl <- makeCluster(max(c(1,n.cores)))
+  fbaalg <- algorithm
 
   if(is.null(compounds) || compounds[1] == "amino acids") {
     compounds <- c(Ala = "cpd00035",
@@ -60,34 +78,16 @@ predict_auxotrophies <- function(mod, compounds = NULL, min.growth = 0.005,
   if(is.null(names(compounds)))
     names(compounds) <- compounds
 
-  # init output
-  auxo_out <- rep(NA_real_, length(compounds))
-  names(auxo_out) <- names(compounds)
+  clusterExport(cl, c("compounds","min.growth","min.growth.fraction"),
+                envir=environment())
 
-  # get orig growth rate
-  m0_growth <- get_growth(mod)
-  if(m0_growth < min.growth) {
-    warning(paste0("Model ('",mod@mod_id,"') has a too low or zero growth rate."))
-    return(auxo_out)
-  }
+  auxores <- parLapply(cl, mod, fun = worker_auxo_pred)
+  stopCluster(cl)
 
-  # checking auxotrophies
-  for(i in 1:length(compounds)) {
-    imet <- compounds[i]
-    ex_id <- paste0("EX_",imet,"_e0")
-    if(ex_id %in% mod@react_id) {
-      mod_tmp <- changeBounds(mod, ex_id, lb = 0)
-      sol_tmp <- optimizeProb(mod_tmp)
-      m1_growth <- sol_tmp@lp_obj
-      auxo_out[i] <- m1_growth / m0_growth
-    } else {
-      auxo_out[i] <- 1
-    }
-  }
+  if(single_mode == FALSE)
+    return(auxores)
 
-  auxo_out <- ifelse(auxo_out >= min.growth.fraction, 1, 0)
-
-  return(auxo_out)
+  return(auxores[[1]])
 }
 
 #' Get growth rate / Value of objective function
@@ -96,21 +96,44 @@ predict_auxotrophies <- function(mod, compounds = NULL, min.growth = 0.005,
 #' objective functions (most commonly the growth rate).
 #'
 #' @param mod Model of type `modelorg`
+#' @param multi.thread logical. Indicating if parallel processing of models is
+#' used.
 #'
 #' @return Numeric. Value of optimal value of objective function. (e.g. growth
 #' rate)
 #'
 #' @export
-get_growth <- function(mod) {
-  sol <- optimizeProb(mod)
+get_growth <- function(mod, multi.thread = TRUE) {
 
-  sol.feasible <- F
-  if(sol@solver == "glpkAPI" & sol@lp_stat != 5)
-    warning("LP solution infeasible.")
-  if(sol@solver == "cplexAPI" & sol@lp_stat != 1)
-    warning("LP solution infeasible.")
+  single_mode <- FALSE
 
-  return(sol@lp_obj)
+  if(is.list(mod)) {
+    if(!all(unlist(lapply(mod, class)) == "modelorg"))
+      stop("Not all models in list are of type 'modelorg'")
+    if(is.null(names(mod)))
+      stop("Model list is not a named list.")
+    if(any(is.na(names(mod))))
+      stop("Not all items in the list of models are named.")
+  } else {
+    if(class(mod) != "modelorg")
+      stop("mod is not of class 'modelorg'")
+    mod <- list(mod)
+    names(mod)[1] <- mod[[1]]@mod_id
+    single_mode <- TRUE
+  }
+
+  # parallel processing?
+  n.cores <- ifelse(multi.thread, detectCores()-1, 1)
+  n.cores <- min(c(n.cores, length(mod)))
+  cl <- makeCluster(max(c(1,n.cores)))
+
+  sol <- parLapply(cl, mod, fun = worker_growth_pred)
+  stopCluster(cl)
+
+  if(single_mode == FALSE)
+    return(sol)
+
+  return(sol[[1]])
 }
 
 #' Get produced metabolites
@@ -120,6 +143,8 @@ get_growth <- function(mod) {
 #' @param mod Model object of class `modelorg`
 #' @param easyConstraints Additional constraints. See easyConstraints in the sybil
 #' documentation.
+#' @param multi.thread logical. Indicating if parallel processing of models is
+#' used.
 #'
 #' @return data.table with predicted production rate and flux ranges. Columns: `ex` - exchange reaction ID,
 #' `rxn.name` - exchange reaction name, `l` - lower bound of reaction flux, `u` - upper bound, `mtf.flux` - predicted production flux.
@@ -131,43 +156,38 @@ get_growth <- function(mod) {
 #' flux variability analysis.
 #'
 #' @export
-get_produced_metabolites <- function(mod, easyConstraints = NULL) {
+get_produced_metabolites <- function(mod, easyConstraints = NULL,
+                                     multi.thread = TRUE) {
+  single_mode <- FALSE
 
-  # get MTF solution
-  if(!is.null(easyConstraints)) {
-    mod_warm <- sysBiolAlg(mod,
-                           algorithm = "mtfEasyConstraint",
-                           easyConstraint = easyConstraints)
+  if(is.list(mod)) {
+    if(!all(unlist(lapply(mod, class)) == "modelorg"))
+      stop("Not all models in list are of type 'modelorg'")
+    if(is.null(names(mod)))
+      stop("Model list is not a named list.")
+    if(any(is.na(names(mod))))
+      stop("Not all items in the list of models are named.")
   } else {
-    mod_warm <- sysBiolAlg(mod,
-                           algorithm = "mtf")
+    if(class(mod) != "modelorg")
+      stop("mod is not of class 'modelorg'")
+    mod <- list(mod)
+    names(mod)[1] <- mod[[1]]@mod_id
+    single_mode <- TRUE
   }
 
-  sol.mtf <- optimizeProb(mod_warm)
-  dt.mtf  <- data.table(ex = mod@react_id,
-                        mtf.flux = sol.mtf$fluxes[1:mod@react_num])
-  dt.mtf.tmp <- copy(dt.mtf[grepl("^EX_", ex)])
+  # parallel processing?
+  n.cores <- ifelse(multi.thread, detectCores()-1, 1)
+  n.cores <- min(c(n.cores, length(mod)))
+  cl <- makeCluster(max(c(1,n.cores)))
+  clusterExport(cl, c("easyConstraints"), envir=environment())
 
-  # this following two lines are there to prevent the case that a nutrient (e.g. L-Lactate)
-  # from the environment is taken up, and thus enables the production of D-Lactate.
-  dt.mtf.tmp[mtf.flux > 0, mtf.flux := 0]
-  model.tmp <- changeBounds(mod, react = dt.mtf.tmp$ex, lb = dt.mtf.tmp$mtf.flux)
+  gpmets <- parLapply(cl, mod, fun = worker_get_prod_mets)
+  stopCluster(cl)
 
+  if(single_mode == FALSE)
+    return(gpmets)
 
-  # get FV solution
-  sol.fv <- fluxVar(model.tmp, react = mod@react_id[grep("^EX_", mod@react_id)])
-
-  dt <- data.table(ex = rep(mod@react_id[grep("^EX_", mod@react_id)],2),
-                   rxn.name = rep(mod@react_name[grep("^EX_", mod@react_id)],2),
-                   dir = c(rep("l",length(grep("^EX_", mod@react_id))),rep("u",length(grep("^EX_", mod@react_id)))),
-                   fv = sol.fv@lp_obj)
-  dt <- dcast(dt, ex + rxn.name ~ dir, value.var = "fv")[(u>1e-6 & l >= 0) | (u > 1)]
-
-
-
-  dt <- merge(dt, dt.mtf, by = "ex")
-
-  return(dt[order(-u)])
+  return(gpmets[[1]])
 }
 
 #' Get utilized metabolites
@@ -177,6 +197,8 @@ get_produced_metabolites <- function(mod, easyConstraints = NULL) {
 #' @param mod Model object of class `modelorg`
 #' @param easyConstraints Additional constraints. See easyConstraints in the sybil
 #' documentation.
+#' @param multi.thread logical. Indicating if parallel processing of models is
+#' used.
 #'
 #' @return data.table with predicted consumption rate and flux ranges. Columns: `ex` - exchange reaction ID,
 #' `rxn.name` - exchange reaction name, `l` - lower bound of reaction flux, `u` - upper bound, `mtf.flux` - predicted utilization flux,
@@ -184,41 +206,39 @@ get_produced_metabolites <- function(mod, easyConstraints = NULL) {
 #' When providing additional constraints, please note that these constraints are
 #' not (yet) applied for the flux variability analysis.
 #' @export
-get_utilized_metabolites <- function(mod, easyConstraints = NULL) {
+get_utilized_metabolites <- function(mod, easyConstraints = NULL,
+                                     multi.thread = TRUE) {
+  single_mode <- FALSE
 
-  # get MTF solution
-  if(!is.null(easyConstraints)) {
-    mod_warm <- sysBiolAlg(mod,
-                           algorithm = "mtfEasyConstraint",
-                           easyConstraint = easyConstraints)
+  if(is.list(mod)) {
+    if(!all(unlist(lapply(mod, class)) == "modelorg"))
+      stop("Not all models in list are of type 'modelorg'")
+    if(is.null(names(mod)))
+      stop("Model list is not a named list.")
+    if(any(is.na(names(mod))))
+      stop("Not all items in the list of models are named.")
   } else {
-    mod_warm <- sysBiolAlg(mod,
-                           algorithm = "mtf")
+    if(class(mod) != "modelorg")
+      stop("mod is not of class 'modelorg'")
+    mod <- list(mod)
+    names(mod)[1] <- mod[[1]]@mod_id
+    single_mode <- TRUE
   }
 
-  sol.mtf <- optimizeProb(mod_warm)
-  dt.mtf  <- data.table(ex = mod@react_id,
-                        mtf.flux = sol.mtf$fluxes[1:mod@react_num],
-                        lb = mod@lowbnd)
-  dt.mtf.tmp <- copy(dt.mtf[grepl("^EX_", ex)])
-  dt.mtf.tmp[mtf.flux < 0, mtf.flux := 0]
-  model.tmp <- changeBounds(mod, react = dt.mtf.tmp$ex, ub = dt.mtf.tmp$mtf.flux)
-  #model.tmp <- mod
+  # parallel processing?
+  n.cores <- ifelse(multi.thread, detectCores()-1, 1)
+  n.cores <- min(c(n.cores, length(mod)))
+  cl <- makeCluster(max(c(1,n.cores)))
+  clusterExport(cl, c("easyConstraints"), envir=environment())
 
-  # get FV solution
-  sol.fv <- fluxVar(model.tmp, react = mod@react_id[grep("^EX_", mod@react_id)])
+  gpmets <- parLapply(cl, mod, fun = worker_get_util_mets)
+  stopCluster(cl)
 
-  dt <- data.table(ex = rep(mod@react_id[grep("^EX_", mod@react_id)],2),
-                   rxn.name = rep(mod@react_name[grep("^EX_", mod@react_id)],2),
-                   dir = c(rep("l",length(grep("^EX_", mod@react_id))),rep("u",length(grep("^EX_", mod@react_id)))),
-                   fv = sol.fv@lp_obj)
-  dt <- dcast(dt, ex + rxn.name ~ dir, value.var = "fv")[(l < -1e-4 & u <= 0) | (l < -1)]
+  if(single_mode == FALSE)
+    return(gpmets)
 
+  return(gpmets[[1]])
 
-  dt <- merge(dt, dt.mtf, by = "ex")
-  dt[, flux.at.limit := ifelse(mtf.flux <= lb*0.999, "*","")]
-
-  return(dt[order(l)])
 }
 
 
@@ -227,28 +247,53 @@ get_utilized_metabolites <- function(mod, easyConstraints = NULL) {
 #'
 #' @description Predict all fluxes of the constrained model.
 #'
-#' @param mod Model of class `modelorg`
+#' @param mod Model of class `modelorg` or a named list of these objects.
 #' @param exclude.unused Exclude reactions with zero fluxes from output table.
 #' @param algorithm character. Algorithm to use to calculate flux distribution.
 #' Parameter is passed on to \link[sybil]{optimizeProb}.
+#' @param multi.thread logical. Indicating if parallel processing of models is
+#' used.
 #'
 #' @return A data.table with columns: `rxn` - reaction ID, `flux` - predicted flux, and additional reaction attributes.
 #'
+#' @import parallel
+#' @import data.table
+#' @import sybil
+#'
 #' @export
-get_flux_distribution <- function(mod, exclude.unused = T, algorithm = "mtf") {
-  sol <- sybil::optimizeProb(mod, algorithm = algorithm)
+get_flux_distribution <- function(mod, exclude.unused = T, algorithm = "mtf",
+                                  multi.thread = TRUE) {
+  single_mode <- FALSE
 
-  dt <- data.table(rxn = mod@react_id, flux = sol@fluxdist@fluxes[1:mod@react_num])
+  if(is.list(mod)) {
+    if(!all(unlist(lapply(mod, class)) == "modelorg"))
+      stop("Not all models in list are of type 'modelorg'")
+    if(is.null(names(mod)))
+      stop("Model list is not a named list.")
+    if(any(is.na(names(mod))))
+      stop("Not all items in the list of models are named.")
+  } else {
+    if(class(mod) != "modelorg")
+      stop("mod is not of class 'modelorg'")
+    mod <- list(mod)
+    names(mod)[1] <- mod[[1]]@mod_id
+    single_mode <- TRUE
+  }
 
-  dt <- cbind(dt, data.table(mod@react_attr))
-  colnames(dt)[duplicated(colnames(dt))] <- paste0(colnames(dt)[duplicated(colnames(dt))],"_2")
+  # parallel processing?
+  n.cores <- ifelse(multi.thread, detectCores()-1, 1)
+  n.cores <- min(c(n.cores, length(mod)))
+  cl <- makeCluster(max(c(1,n.cores)))
+  fbaalg <- algorithm
+  clusterExport(cl, c("fbaalg","exclude.unused"), envir=environment())
 
-  if(exclude.unused)
-    dt <- dt[flux != 0]
+  flxlst <- parLapply(cl, mod, fun = worker_fba)
+  stopCluster(cl)
 
-  dt$equation <- print_reaction(mod, react = dt$rxn)
-  dt[, annotation := NULL]
-  return(dt)
+  if(single_mode == FALSE)
+    return(flxlst)
+
+  return(flxlst[[1]])
 }
 
 #' Get reduced costs
@@ -491,6 +536,8 @@ get_mod_namespace <- function(mod) {
 #' be used to add up the exchange fluxes of specific compounds. This for instance
 #' makes sense for enantiomers such as D- and L-Lactate, which is also set as
 #' default and example.
+#' @param multi.thread logical. Indicating if parallel processing of models is
+#' used.
 #'
 #' @return A data.table, with the columns: 'model' for model ID, 'rxn' for the
 #' ID if the exchange reaction, 'flux' for the predicted flux value, 'in.model'
@@ -500,6 +547,8 @@ get_mod_namespace <- function(mod) {
 #' @details
 #' In case an exchange reaction is not part of one model but present in another
 #' model of the input models, a flux value of 0 is indicated.
+#'
+#' @import parallel
 #'
 #' @export
 get_exchanges <- function(model, algorithm = "mtf",
@@ -519,16 +568,18 @@ get_exchanges <- function(model, algorithm = "mtf",
     names(model)[1] <- model[[1]]@mod_id
   }
 
-  flx <- lapply(model, FUN = function(mod) {
-    flxtmp <- get_flux_distribution(mod, exclude.unused = F,
-                                    algorithm = algorithm)
+  flx <- get_flux_distribution(model, exclude.unused = F, algorithm = algorithm)
+
+  flx <- lapply(1:length(flx), FUN = function(k) {
+    flxtmp <- flx[[k]]
     flxtmp <- flxtmp[grepl("^EX", rxn), .(rxn, flux)]
-    flxtmp$name <- mod@react_name[match(flxtmp$rxn, mod@react_id)]
+    flxtmp$name <- model[[k]]@react_name[match(flxtmp$rxn, model[[k]]@react_id)]
     flxtmp <- flxtmp[rxn != "EX_cpd11416_c0"] # that's the biomass
     flxtmp[, name := gsub("-e0 Exchange$| Exchange","", name)]
 
     return(flxtmp)
   })
+  names(flx) <- names(model)
   flx <- rbindlist(flx, idcol = "model")
 
   # save metabolite ids and names
@@ -566,3 +617,166 @@ get_exchanges <- function(model, algorithm = "mtf",
   return(flx)
 }
 
+#' @import sybil
+#' @import data.table
+worker_fba <- function(x) {
+  if("cplexAPI" %in% installed.packages())
+    SYBIL_SETTINGS("SOLVER","cplexAPI")
+
+  sol <- optimizeProb(x, algorithm = fbaalg)
+
+  dt <- data.table(rxn = x@react_id, flux = sol@fluxdist@fluxes[1:x@react_num])
+
+  dt <- cbind(dt, data.table(x@react_attr))
+
+  colnames(dt)[duplicated(colnames(dt))] <- paste0(colnames(dt)[duplicated(colnames(dt))],"_2")
+
+  if(exclude.unused)
+    dt <- dt[flux != 0]
+
+  dt$equation <- print_reaction(x, react = dt$rxn)
+  dt[, annotation := NULL]
+  return(dt)
+}
+
+#' @import sybil
+worker_auxo_pred <- function(x) {
+  if("cplexAPI" %in% rownames(utils::installed.packages())) {
+    SYBIL_SETTINGS("SOLVER","cplexAPI")
+    okcode   <- 1
+  }
+
+  # init output
+  auxo_out <- rep(NA_real_, length(compounds))
+  names(auxo_out) <- names(compounds)
+
+  # get orig growth rate
+  m0_growth <- get_growth(x)
+  if(m0_growth < min.growth) {
+    warning(paste0("Model ('",x@mod_id,"') has a too low or zero growth rate."))
+    return(auxo_out)
+  }
+
+  # checking auxotrophies
+  for(i in 1:length(compounds)) {
+    imet <- compounds[i]
+    ex_id <- paste0("EX_",imet,"_e0")
+    if(ex_id %in% x@react_id) {
+      mod_tmp <- changeBounds(x, ex_id, lb = 0)
+      sol_tmp <- optimizeProb(mod_tmp)
+      m1_growth <- sol_tmp@lp_obj
+      auxo_out[i] <- m1_growth / m0_growth
+    } else {
+      auxo_out[i] <- 1
+    }
+  }
+
+  auxo_out <- ifelse(auxo_out >= min.growth.fraction, 1, 0)
+
+  return(auxo_out)
+}
+
+#' @import sybil
+worker_growth_pred <- function(x) {
+  if("cplexAPI" %in% rownames(utils::installed.packages())) {
+    SYBIL_SETTINGS("SOLVER","cplexAPI")
+    okcode   <- 1
+  }
+
+  sol <- optimizeProb(x)
+
+  if(sol@solver == "glpkAPI" & sol@lp_stat != 5)
+    warning("LP solution infeasible.")
+  if(sol@solver == "cplexAPI" & sol@lp_stat != 1)
+    warning("LP solution infeasible.")
+
+  return(sol@lp_obj)
+}
+
+#' @import sybil
+#' @import data.table
+worker_get_prod_mets <- function(mod) {
+
+  if("cplexAPI" %in% rownames(utils::installed.packages())) {
+    SYBIL_SETTINGS("SOLVER","cplexAPI")
+  }
+
+  # get MTF solution
+  if(!is.null(easyConstraints)) {
+    mod_warm <- sysBiolAlg(mod,
+                           algorithm = "mtfEasyConstraint",
+                           easyConstraint = easyConstraints)
+  } else {
+    mod_warm <- sysBiolAlg(mod,
+                           algorithm = "mtf")
+  }
+
+  sol.mtf <- optimizeProb(mod_warm)
+  dt.mtf  <- data.table(ex = mod@react_id,
+                        mtf.flux = sol.mtf$fluxes[1:mod@react_num])
+  dt.mtf.tmp <- copy(dt.mtf[grepl("^EX_", ex)])
+
+  # this following two lines are there to prevent the case that a nutrient (e.g. L-Lactate)
+  # from the environment is taken up, and thus enables the production of D-Lactate.
+  dt.mtf.tmp[mtf.flux > 0, mtf.flux := 0]
+  model.tmp <- changeBounds(mod, react = dt.mtf.tmp$ex, lb = dt.mtf.tmp$mtf.flux)
+
+
+  # get FV solution
+  sol.fv <- fluxVar(model.tmp, react = mod@react_id[grep("^EX_", mod@react_id)])
+
+  dt <- data.table(ex = rep(mod@react_id[grep("^EX_", mod@react_id)],2),
+                   rxn.name = rep(mod@react_name[grep("^EX_", mod@react_id)],2),
+                   dir = c(rep("l",length(grep("^EX_", mod@react_id))),rep("u",length(grep("^EX_", mod@react_id)))),
+                   fv = sol.fv@lp_obj)
+  dt <- dcast(dt, ex + rxn.name ~ dir, value.var = "fv")[(u>1e-6 & l >= 0) | (u > 1)]
+
+
+
+  dt <- merge(dt, dt.mtf, by = "ex")
+
+  return(dt[order(-u)])
+}
+
+#' @import sybil
+#' @import data.table
+worker_get_util_mets <- function(mod) {
+
+  if("cplexAPI" %in% rownames(utils::installed.packages())) {
+    SYBIL_SETTINGS("SOLVER","cplexAPI")
+  }
+
+  # get MTF solution
+  if(!is.null(easyConstraints)) {
+    mod_warm <- sysBiolAlg(mod,
+                           algorithm = "mtfEasyConstraint",
+                           easyConstraint = easyConstraints)
+  } else {
+    mod_warm <- sysBiolAlg(mod,
+                           algorithm = "mtf")
+  }
+
+  sol.mtf <- optimizeProb(mod_warm)
+  dt.mtf  <- data.table(ex = mod@react_id,
+                        mtf.flux = sol.mtf$fluxes[1:mod@react_num],
+                        lb = mod@lowbnd)
+  dt.mtf.tmp <- copy(dt.mtf[grepl("^EX_", ex)])
+  dt.mtf.tmp[mtf.flux < 0, mtf.flux := 0]
+  model.tmp <- changeBounds(mod, react = dt.mtf.tmp$ex, ub = dt.mtf.tmp$mtf.flux)
+  #model.tmp <- mod
+
+  # get FV solution
+  sol.fv <- fluxVar(model.tmp, react = mod@react_id[grep("^EX_", mod@react_id)])
+
+  dt <- data.table(ex = rep(mod@react_id[grep("^EX_", mod@react_id)],2),
+                   rxn.name = rep(mod@react_name[grep("^EX_", mod@react_id)],2),
+                   dir = c(rep("l",length(grep("^EX_", mod@react_id))),rep("u",length(grep("^EX_", mod@react_id)))),
+                   fv = sol.fv@lp_obj)
+  dt <- dcast(dt, ex + rxn.name ~ dir, value.var = "fv")[(l < -1e-4 & u <= 0) | (l < -1)]
+
+
+  dt <- merge(dt, dt.mtf, by = "ex")
+  dt[, flux.at.limit := ifelse(mtf.flux <= lb*0.999, "*","")]
+
+  return(dt[order(l)])
+}

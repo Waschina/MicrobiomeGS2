@@ -4,15 +4,23 @@
 \alias{get_flux_distribution}
 \title{Get flux distribution}
 \usage{
-get_flux_distribution(mod, exclude.unused = T, algorithm = "mtf")
+get_flux_distribution(
+  mod,
+  exclude.unused = T,
+  algorithm = "mtf",
+  multi.thread = TRUE
+)
 }
 \arguments{
-\item{mod}{Model of class `modelorg`}
+\item{mod}{Model of class `modelorg` or a named list of these objects.}
 
 \item{exclude.unused}{Exclude reactions with zero fluxes from output table.}
 
 \item{algorithm}{character. Algorithm to use to calculate flux distribution.
 Parameter is passed on to \link[sybil]{optimizeProb}.}
+
+\item{multi.thread}{logical. Indicating if parallel processing of models is
+used.}
 }
 \value{
 A data.table with columns: `rxn` - reaction ID, `flux` - predicted flux, and additional reaction attributes.

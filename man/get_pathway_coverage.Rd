@@ -4,7 +4,13 @@
 \alias{get_pathway_coverage}
 \title{Pathway coverage}
 \usage{
-get_pathway_coverage(models, reactions, pathways, pathways.of.interest = NULL)
+get_pathway_coverage(
+  models,
+  reactions,
+  pathways,
+  pathways.of.interest = NULL,
+  multi.thread = TRUE
+)
 }
 \arguments{
 \item{models}{Object of class `modelorg` or list of `modelorg` objects.}
@@ -17,6 +23,9 @@ get_pathway_coverage(models, reactions, pathways, pathways.of.interest = NULL)
 
 \item{pathways.of.interest}{character vector of pathway IDs to be tested for
 coverage. If 'NULL', all pathways in 'pathways' are considered.}
+
+\item{multi.thread}{logical. Indicating if parallel processing of models is
+used.}
 }
 \value{
 Returns a data.table. See details

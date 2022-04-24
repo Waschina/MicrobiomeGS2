@@ -4,13 +4,16 @@
 \alias{get_produced_metabolites}
 \title{Get produced metabolites}
 \usage{
-get_produced_metabolites(mod, easyConstraints = NULL)
+get_produced_metabolites(mod, easyConstraints = NULL, multi.thread = TRUE)
 }
 \arguments{
 \item{mod}{Model object of class `modelorg`}
 
 \item{easyConstraints}{Additional constraints. See easyConstraints in the sybil
 documentation.}
+
+\item{multi.thread}{logical. Indicating if parallel processing of models is
+used.}
 }
 \value{
 data.table with predicted production rate and flux ranges. Columns: `ex` - exchange reaction ID,

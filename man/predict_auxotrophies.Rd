@@ -8,11 +8,12 @@ predict_auxotrophies(
   mod,
   compounds = NULL,
   min.growth = 0.005,
-  min.growth.fraction = 0.05
+  min.growth.fraction = 0.05,
+  multi.thread = TRUE
 )
 }
 \arguments{
-\item{mod}{Model of type `modelorg`}
+\item{mod}{Model of class `modelorg` or a named list of these objects.}
 
 \item{compounds}{character. IDs of the model compound whose lower bound
 should be set to 0 in order to test its essentiality. No suffix for the
@@ -23,6 +24,9 @@ external compartment is required.}
 \item{min.growth.fraction}{double. Minimum growth fraction of the model
 without the compound relative to the original model that is required to call
 the model prototrophic for the compound.}
+
+\item{multi.thread}{logical. Indicating if parallel processing of models is
+used.}
 }
 \value{
 Named numeric vector with the same length and order as `compounds`.
@@ -31,5 +35,5 @@ Entry of 1 indicates prototrophy and 0 auxotrophy.
 \description{
 Performs a FBA on the input model and on the model, where the
 lower bound (i.e. influx) of the compounds is set each (individually) to 0,
-and growth rates are compared.
+and growth rates are compared. Works currently only for gapseq models.
 }

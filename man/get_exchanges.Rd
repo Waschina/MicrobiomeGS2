@@ -21,6 +21,9 @@ or 'fba'.}
 be used to add up the exchange fluxes of specific compounds. This for instance
 makes sense for enantiomers such as D- and L-Lactate, which is also set as
 default and example.}
+
+\item{multi.thread}{logical. Indicating if parallel processing of models is
+used.}
 }
 \value{
 A data.table, with the columns: 'model' for model ID, 'rxn' for the
