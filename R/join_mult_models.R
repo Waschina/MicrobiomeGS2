@@ -278,7 +278,7 @@ addMultiReact <- function(model,
     if(length(lb)==1 & nR>1)  lb  <- rep(lb,  nR)
     if(length(ub)==1 & nR>1)  ub  <- rep(ub,  nR)
     if(length(reversible)==1 & nR>1) reversible <- rep(reversible, nR)
-    Crev      <- ifelse( ( (ub > 0) && (lb < 0) ) && (!isTRUE(reversible)), TRUE, reversible)
+    Crev      <- ifelse( ( (ub > 0) & (lb < 0) ) & (!isTRUE(reversible)), TRUE, reversible)
   }
 
 
