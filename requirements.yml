@@ -9,3 +9,4 @@ dependencies:
   - r-chnosz
   - r-data.table>=1.13.4 
   - r-devtools
+  - r-stringr
