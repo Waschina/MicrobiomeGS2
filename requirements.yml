@@ -1,0 +1,11 @@
+name: MicrobiomeGS2
+channels:
+  - bioconda
+  - conda-forge
+  - r
+dependencies:
+  - bioconductor-rdisop
+  - r>=4.0.0
+  - r-chnosz
+  - r-data.table>=1.13.4 
+  - r-devtools
