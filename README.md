@@ -20,7 +20,7 @@ Install missing R packages
 
 ```
 Rscript -e "install.packages(c( 'https://cran.r-project.org/src/contrib/Archive/sybil/sybil_2.2.0.tar.gz', 'https://cran.r-project.org/src/contrib/Archive/sybilSBML/sybilSBML_3.1.2.tar.gz'), repos = NULL)"
-Rscript -e "`devtools::install_github('Waschina/MicrobiomeGS2')"
+Rscript -e "devtools::install_github('Waschina/MicrobiomeGS2')"
 ```
 
 ## CPLEX support
