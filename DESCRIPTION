@@ -13,7 +13,8 @@ Depends:
     R (>= 4.0.0),
     data.table (>= 1.13.4),
     sybil (>= 2.1.5),
-    stringr (>= 1.4.0)
+    stringr (>= 1.4.0),
+    glpkAPI
 biocViews:
 Imports:
     CHNOSZ,
