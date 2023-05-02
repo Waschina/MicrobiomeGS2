@@ -1,0 +1,9 @@
+name: MicrobiomeGS2
+channels:
+  - bioconda
+  - conda-forge
+  - r
+dependencies:
+  - r>=4.0.0
+  - r-devtools
+  - bioconda::libsbml
