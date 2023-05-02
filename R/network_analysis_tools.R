@@ -100,6 +100,8 @@ get_reaction_table <- function(mod) {
 #' coverage. If 'NULL', all pathways in 'pathways' are considered.
 #' @param multi.thread logical. Indicating if parallel processing of models is
 #' used.
+#' @param ncores integer. Number of CPUs that are used in case of parallel
+#' processing. If NULL, the number of available CPUs is detected.
 #'
 #' @return Returns a data.table. See details
 #'
@@ -128,7 +130,8 @@ get_reaction_table <- function(mod) {
 #' @export
 get_pathway_coverage <- function(models, reactions, pathways,
                                  pathways.of.interest = NULL,
-                                 multi.thread = TRUE) {
+                                 multi.thread = TRUE,
+                                 ncores = NULL) {
 
   if(class(models) == "modelorg") {
     models    <- list(models)
@@ -142,6 +145,8 @@ get_pathway_coverage <- function(models, reactions, pathways,
 
   # parallel processing?
   n.cores <- ifelse(multi.thread, detectCores()-1, 1)
+  if(!is.null(ncores))
+    n.cores <- ncores
   n.cores <- min(c(n.cores, length(models)))
   cl <- makeCluster(max(c(1,n.cores)))
   clusterExport(cl, c("pathways.of.interest"), envir=environment())

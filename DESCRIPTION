@@ -2,17 +2,25 @@ Package: MicrobiomeGS2
 Type: Package
 Title: Analysis and simulation of genome- & ecosystem-scale microbial metabolism
 Version: 0.1.5
-Author: Silvio Waschina (CAU Kiel)
-Maintainer: Silvio Waschina <s.waschina@nutrinf.uni-kiel.de>
+Authors@R:
+    c(person(given = "Silvio",
+             family = "Waschina",
+             role = c("aut","cre"),
+             email = "s.waschina@nutrinf.uni-kiel.de",
+             comment = c(ORCID = "0000-0002-6290-3593")))
 Description: a.o. Community-FBA
 Depends: 
     R (>= 4.0.0),
     data.table (>= 1.13.4),
+    sybil (>= 2.1.5),
     stringr (>= 1.4.0),
-    sybil (>= 2.2.0)
+    glpkAPI
+biocViews:
 Imports:
     CHNOSZ,
     Rdisop
+Remotes: 
+    SysBioChalmers/sybil
 License: GNU General Public License v3.0
 Encoding: UTF-8
 LazyData: true

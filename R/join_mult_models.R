@@ -656,15 +656,17 @@ get_coupling_constraints_mult <- function(modj, cpl_c = 400, cpl_u = 0.01) {
 #' the total community biomass. Should be of the same length as number of
 #' models.
 #' @param pFBAcoeff parsimonious FBA coefficient that corresponds to the weight of absolute flux values relative to the biomass mass production.
-#' @param lp.method Solver algorith to use. Default: hybbaropt.
+#' @param lp.method Solver algorithm to use. Default: hybbaropt.
 #' @param scale.boundaries Factor (x) that scaled the lower bounds of Exchange Reactions. Experimental, thus it is recommended to use the default: 1 (no scaling).
 #' @param cpl_c Coupling constraint \code{c}. See Heinken et al (2013) Gut Microbes (doi: 10.4161/gmic.22370). Default: 400
 #' @param cpl_u Coupling constraint \code{u}. See Heinken et al (2013) Gut Microbes (doi: 10.4161/gmic.22370). Default: 0.01
+#' @param solver.threads Number of cores provided to the CPLEX-LP solver.
 #'
 #' @export
 communityFBA_FB <- function(models, model.prop, scale.boundaries = 1,
                             cpl_c = 400, cpl_u = 0.01, pFBAcoeff = 1e-6,
-                            lp.method = "hybbaropt") {
+                            lp.method = "hybbaropt",
+                            solver.threads = NULL) {
 
   sybil::SYBIL_SETTINGS("METHOD", lp.method)
   sybil::SYBIL_SETTINGS("SOLVER","cplexAPI")
@@ -712,6 +714,8 @@ communityFBA_FB <- function(models, model.prop, scale.boundaries = 1,
                           easyConstraint=coupling,
                           pFBAcoeff = pFBAcoeff,
                           scaling = scale.boundaries)
+  if(!is.null(solver.threads))
+    setSolverParm(modj_warm@problem, solverParm = list("CPXPARAM_Threads" = as.integer(solver.threads)))
   mod.joined$solj <- optimizeProb(modj_warm)
 
   # Get community growth
