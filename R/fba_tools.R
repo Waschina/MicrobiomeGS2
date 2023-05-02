@@ -14,6 +14,8 @@
 #' the model prototrophic for the compound.
 #' @param multi.thread logical. Indicating if parallel processing of models is
 #' used.
+#' @param ncores integer. Number of CPUs that are used in case of parallel
+#' processing. If NULL, the number of available CPUs is detected.
 #'
 #' @return Named numeric vector with the same length and order as `compounds`.
 #' Entry of 1 indicates prototrophy and 0 auxotrophy.
@@ -24,7 +26,8 @@
 #' @export
 predict_auxotrophies <- function(mod, compounds = NULL, min.growth = 0.005,
                                  min.growth.fraction = 0.05,
-                                 multi.thread = TRUE) {
+                                 multi.thread = TRUE,
+                                 ncores = NULL) {
 
   single_mode <- FALSE
 
@@ -45,6 +48,8 @@ predict_auxotrophies <- function(mod, compounds = NULL, min.growth = 0.005,
 
   # parallel processing?
   n.cores <- ifelse(multi.thread, detectCores()-1, 1)
+  if(!is.null(ncores))
+    n.cores <- ncores
   n.cores <- min(c(n.cores, length(mod)))
   cl <- makeCluster(max(c(1,n.cores)))
   fbaalg <- algorithm
@@ -69,9 +74,8 @@ predict_auxotrophies <- function(mod, compounds = NULL, min.growth = 0.005,
                    Ser = "cpd00054",
                    Cys = "cpd00084",
                    Asp = "cpd00041",
-                   Asn = "cpd00132",
-                   Chor = "cpd00216"
-                   )
+                   Asn = "cpd00132"
+    )
   }
 
   compounds <- gsub("^EX_|_.0$", "", compounds)
@@ -98,12 +102,14 @@ predict_auxotrophies <- function(mod, compounds = NULL, min.growth = 0.005,
 #' @param mod Model of type `modelorg`
 #' @param multi.thread logical. Indicating if parallel processing of models is
 #' used.
+#' @param ncores integer. Number of CPUs that are used in case of parallel
+#' processing. If NULL, the number of available CPUs is detected.
 #'
 #' @return Numeric. Value of optimal value of objective function. (e.g. growth
 #' rate)
 #'
 #' @export
-get_growth <- function(mod, multi.thread = TRUE) {
+get_growth <- function(mod, multi.thread = TRUE, ncores = NULL) {
 
   single_mode <- FALSE
 
@@ -124,6 +130,8 @@ get_growth <- function(mod, multi.thread = TRUE) {
 
   # parallel processing?
   n.cores <- ifelse(multi.thread, detectCores()-1, 1)
+  if(!is.null(ncores))
+    n.cores <- ncores
   n.cores <- min(c(n.cores, length(mod)))
   cl <- makeCluster(max(c(1,n.cores)))
 
@@ -145,6 +153,8 @@ get_growth <- function(mod, multi.thread = TRUE) {
 #' documentation.
 #' @param multi.thread logical. Indicating if parallel processing of models is
 #' used.
+#' @param ncores integer. Number of CPUs that are used in case of parallel
+#' processing. If NULL, the number of available CPUs is detected.
 #'
 #' @return data.table with predicted production rate and flux ranges. Columns: `ex` - exchange reaction ID,
 #' `rxn.name` - exchange reaction name, `l` - lower bound of reaction flux, `u` - upper bound, `mtf.flux` - predicted production flux.
@@ -157,7 +167,7 @@ get_growth <- function(mod, multi.thread = TRUE) {
 #'
 #' @export
 get_produced_metabolites <- function(mod, easyConstraints = NULL,
-                                     multi.thread = TRUE) {
+                                     multi.thread = TRUE, ncores = NULL) {
   single_mode <- FALSE
 
   if(is.list(mod)) {
@@ -177,6 +187,8 @@ get_produced_metabolites <- function(mod, easyConstraints = NULL,
 
   # parallel processing?
   n.cores <- ifelse(multi.thread, detectCores()-1, 1)
+  if(!is.null(ncores))
+    n.cores <- ncores
   n.cores <- min(c(n.cores, length(mod)))
   cl <- makeCluster(max(c(1,n.cores)))
   clusterExport(cl, c("easyConstraints"), envir=environment())
@@ -199,6 +211,8 @@ get_produced_metabolites <- function(mod, easyConstraints = NULL,
 #' documentation.
 #' @param multi.thread logical. Indicating if parallel processing of models is
 #' used.
+#' @param ncores integer. Number of CPUs that are used in case of parallel
+#' processing. If NULL, the number of available CPUs is detected.
 #'
 #' @return data.table with predicted consumption rate and flux ranges. Columns: `ex` - exchange reaction ID,
 #' `rxn.name` - exchange reaction name, `l` - lower bound of reaction flux, `u` - upper bound, `mtf.flux` - predicted utilization flux,
@@ -207,7 +221,7 @@ get_produced_metabolites <- function(mod, easyConstraints = NULL,
 #' not (yet) applied for the flux variability analysis.
 #' @export
 get_utilized_metabolites <- function(mod, easyConstraints = NULL,
-                                     multi.thread = TRUE) {
+                                     multi.thread = TRUE, ncores = NULL) {
   single_mode <- FALSE
 
   if(is.list(mod)) {
@@ -227,6 +241,8 @@ get_utilized_metabolites <- function(mod, easyConstraints = NULL,
 
   # parallel processing?
   n.cores <- ifelse(multi.thread, detectCores()-1, 1)
+  if(!is.null(ncores))
+    n.cores <- ncores
   n.cores <- min(c(n.cores, length(mod)))
   cl <- makeCluster(max(c(1,n.cores)))
   clusterExport(cl, c("easyConstraints"), envir=environment())
@@ -253,6 +269,8 @@ get_utilized_metabolites <- function(mod, easyConstraints = NULL,
 #' Parameter is passed on to \link[sybil]{optimizeProb}.
 #' @param multi.thread logical. Indicating if parallel processing of models is
 #' used.
+#' @param ncores integer. Number of CPUs that are used in case of parallel
+#' processing. If NULL, the number of available CPUs is detected.
 #'
 #' @return A data.table with columns: `rxn` - reaction ID, `flux` - predicted flux, and additional reaction attributes.
 #'
@@ -262,7 +280,7 @@ get_utilized_metabolites <- function(mod, easyConstraints = NULL,
 #'
 #' @export
 get_flux_distribution <- function(mod, exclude.unused = T, algorithm = "mtf",
-                                  multi.thread = TRUE) {
+                                  multi.thread = TRUE, ncores = NULL) {
   single_mode <- FALSE
 
   if(is.list(mod)) {
@@ -282,6 +300,8 @@ get_flux_distribution <- function(mod, exclude.unused = T, algorithm = "mtf",
 
   # parallel processing?
   n.cores <- ifelse(multi.thread, detectCores()-1, 1)
+  if(!is.null(ncores))
+    n.cores <- ncores
   n.cores <- min(c(n.cores, length(mod)))
   cl <- makeCluster(max(c(1,n.cores)))
   fbaalg <- algorithm
@@ -538,6 +558,8 @@ get_mod_namespace <- function(mod) {
 #' default and example.
 #' @param multi.thread logical. Indicating if parallel processing of models is
 #' used.
+#' @param ncores integer. Number of CPUs that are used in case of parallel
+#' processing. If NULL, the number of available CPUs is detected.
 #'
 #' @return A data.table, with the columns: 'model' for model ID, 'rxn' for the
 #' ID if the exchange reaction, 'flux' for the predicted flux value, 'in.model'
@@ -553,7 +575,9 @@ get_mod_namespace <- function(mod) {
 #' @export
 get_exchanges <- function(model, algorithm = "mtf",
                           combine.compounds = list(`DL-Lactate` = c("EX_cpd00159_e0",
-                                                                    "EX_cpd00221_e0"))) {
+                                                                    "EX_cpd00221_e0")),
+                          multi.thread = TRUE,
+                          ncores = NULL) {
   if(is.list(model)) {
     if(!all(unlist(lapply(model, class)) == "modelorg"))
       stop("Not all models in list are of type 'modelorg'")
@@ -568,7 +592,8 @@ get_exchanges <- function(model, algorithm = "mtf",
     names(model)[1] <- model[[1]]@mod_id
   }
 
-  flx <- get_flux_distribution(model, exclude.unused = F, algorithm = algorithm)
+  flx <- get_flux_distribution(model, exclude.unused = F, algorithm = algorithm,
+                               multi.thread = multi.thread, ncores = ncores)
 
   flx <- lapply(1:length(flx), FUN = function(k) {
     flxtmp <- flx[[k]]
