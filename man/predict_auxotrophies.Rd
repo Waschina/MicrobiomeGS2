@@ -9,7 +9,8 @@ predict_auxotrophies(
   compounds = NULL,
   min.growth = 0.005,
   min.growth.fraction = 0.05,
-  multi.thread = TRUE
+  multi.thread = TRUE,
+  ncores = NULL
 )
 }
 \arguments{
@@ -27,6 +28,9 @@ the model prototrophic for the compound.}
 
 \item{multi.thread}{logical. Indicating if parallel processing of models is
 used.}
+
+\item{ncores}{integer. Number of CPUs that are used in case of parallel
+processing. If NULL, the number of available CPUs is detected.}
 }
 \value{
 Named numeric vector with the same length and order as `compounds`.

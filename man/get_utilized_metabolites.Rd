@@ -4,13 +4,24 @@
 \alias{get_utilized_metabolites}
 \title{Get utilized metabolites}
 \usage{
-get_utilized_metabolites(mod, easyConstraints = NULL)
+get_utilized_metabolites(
+  mod,
+  easyConstraints = NULL,
+  multi.thread = TRUE,
+  ncores = NULL
+)
 }
 \arguments{
 \item{mod}{Model object of class `modelorg`}
 
 \item{easyConstraints}{Additional constraints. See easyConstraints in the sybil
 documentation.}
+
+\item{multi.thread}{logical. Indicating if parallel processing of models is
+used.}
+
+\item{ncores}{integer. Number of CPUs that are used in case of parallel
+processing. If NULL, the number of available CPUs is detected.}
 }
 \value{
 data.table with predicted consumption rate and flux ranges. Columns: `ex` - exchange reaction ID,

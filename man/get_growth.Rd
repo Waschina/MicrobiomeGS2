@@ -4,13 +4,16 @@
 \alias{get_growth}
 \title{Get growth rate / Value of objective function}
 \usage{
-get_growth(mod, multi.thread = TRUE)
+get_growth(mod, multi.thread = TRUE, ncores = NULL)
 }
 \arguments{
 \item{mod}{Model of type `modelorg`}
 
 \item{multi.thread}{logical. Indicating if parallel processing of models is
 used.}
+
+\item{ncores}{integer. Number of CPUs that are used in case of parallel
+processing. If NULL, the number of available CPUs is detected.}
 }
 \value{
 Numeric. Value of optimal value of objective function. (e.g. growth

@@ -8,7 +8,8 @@ get_flux_distribution(
   mod,
   exclude.unused = T,
   algorithm = "mtf",
-  multi.thread = TRUE
+  multi.thread = TRUE,
+  ncores = NULL
 )
 }
 \arguments{
@@ -21,6 +22,9 @@ Parameter is passed on to \link[sybil]{optimizeProb}.}
 
 \item{multi.thread}{logical. Indicating if parallel processing of models is
 used.}
+
+\item{ncores}{integer. Number of CPUs that are used in case of parallel
+processing. If NULL, the number of available CPUs is detected.}
 }
 \value{
 A data.table with columns: `rxn` - reaction ID, `flux` - predicted flux, and additional reaction attributes.

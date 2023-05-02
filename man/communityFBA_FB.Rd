@@ -11,7 +11,8 @@ communityFBA_FB(
   cpl_c = 400,
   cpl_u = 0.01,
   pFBAcoeff = 1e-06,
-  lp.method = "hybbaropt"
+  lp.method = "hybbaropt",
+  solver.threads = NULL
 )
 }
 \arguments{
@@ -29,7 +30,9 @@ models.}
 
 \item{pFBAcoeff}{parsimonious FBA coefficient that corresponds to the weight of absolute flux values relative to the biomass mass production.}
 
-\item{lp.method}{Solver algorith to use. Default: hybbaropt.}
+\item{lp.method}{Solver algorithm to use. Default: hybbaropt.}
+
+\item{solver.threads}{Number of cores provided to the CPLEX-LP solver.}
 }
 \description{
 Community FBA with fixed biomass ratios

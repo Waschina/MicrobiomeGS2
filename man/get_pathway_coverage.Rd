@@ -9,7 +9,8 @@ get_pathway_coverage(
   reactions,
   pathways,
   pathways.of.interest = NULL,
-  multi.thread = TRUE
+  multi.thread = TRUE,
+  ncores = NULL
 )
 }
 \arguments{
@@ -26,6 +27,9 @@ coverage. If 'NULL', all pathways in 'pathways' are considered.}
 
 \item{multi.thread}{logical. Indicating if parallel processing of models is
 used.}
+
+\item{ncores}{integer. Number of CPUs that are used in case of parallel
+processing. If NULL, the number of available CPUs is detected.}
 }
 \value{
 Returns a data.table. See details

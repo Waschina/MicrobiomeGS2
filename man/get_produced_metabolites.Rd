@@ -4,7 +4,12 @@
 \alias{get_produced_metabolites}
 \title{Get produced metabolites}
 \usage{
-get_produced_metabolites(mod, easyConstraints = NULL, multi.thread = TRUE)
+get_produced_metabolites(
+  mod,
+  easyConstraints = NULL,
+  multi.thread = TRUE,
+  ncores = NULL
+)
 }
 \arguments{
 \item{mod}{Model object of class `modelorg`}
@@ -14,6 +19,9 @@ documentation.}
 
 \item{multi.thread}{logical. Indicating if parallel processing of models is
 used.}
+
+\item{ncores}{integer. Number of CPUs that are used in case of parallel
+processing. If NULL, the number of available CPUs is detected.}
 }
 \value{
 data.table with predicted production rate and flux ranges. Columns: `ex` - exchange reaction ID,

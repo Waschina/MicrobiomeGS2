@@ -7,7 +7,9 @@
 get_exchanges(
   model,
   algorithm = "mtf",
-  combine.compounds = list(`DL-Lactate` = c("EX_cpd00159_e0", "EX_cpd00221_e0"))
+  combine.compounds = list(`DL-Lactate` = c("EX_cpd00159_e0", "EX_cpd00221_e0")),
+  multi.thread = TRUE,
+  ncores = NULL
 )
 }
 \arguments{
@@ -24,6 +26,9 @@ default and example.}
 
 \item{multi.thread}{logical. Indicating if parallel processing of models is
 used.}
+
+\item{ncores}{integer. Number of CPUs that are used in case of parallel
+processing. If NULL, the number of available CPUs is detected.}
 }
 \value{
 A data.table, with the columns: 'model' for model ID, 'rxn' for the
