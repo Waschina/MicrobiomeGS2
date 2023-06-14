@@ -1,14 +1,14 @@
 Package: MicrobiomeGS2
 Type: Package
 Title: Analysis and simulation of genome- & ecosystem-scale microbial metabolism
-Version: 0.1.7
+Version: 0.1.8
 Authors@R:
     c(person(given = "Silvio",
              family = "Waschina",
              role = c("aut","cre"),
              email = "s.waschina@nutrinf.uni-kiel.de",
              comment = c(ORCID = "0000-0002-6290-3593")))
-Description: a.o. Community-FBA
+Description: a.o. Community-FBA and functions to specifically analysis gapseq models and gapseq model collections.
 Depends: 
     R (>= 4.0.0),
     data.table (>= 1.13.4),

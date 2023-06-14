@@ -13,6 +13,9 @@
 #' 'pathways', 'transporters', 'medium' (predicted growth medium).
 #' @param subset integer. For testing purposes you can choose the maximum number
 #' of model files to be read.
+#' @param entries In case 'file.type' is "pathways" or "reactions", the argument
+#' can be used to limit the output to specific pathways or reactions. If `NULL`,
+#' all entries are returned.
 #'
 #' @return A named (IDs) list of with elements of class `modelorg` (in case of
 #' file.type is 'model' or 'draft') or elements of class `data.table` otherwise.
@@ -21,7 +24,7 @@
 #'
 #' @export
 fetch_model_collection <- function(model.dir, IDs = NULL, file.type = "model",
-                                   subset = NULL) {
+                                   subset = NULL, entries = NULL) {
   if(is.null(subset) || subset < 1)
     subset <- Inf
 
@@ -102,7 +105,19 @@ fetch_model_collection <- function(model.dir, IDs = NULL, file.type = "model",
   if(file.type %in% c("draft","model"))
     out <- lapply(mod.files[1:inds], FUN = readRDS)
   if(file.type %in% c("reactions","pathways","transporters","medium"))
-    out <- lapply(mod.files[1:inds], FUN = fread)
+    out <- lapply(mod.files[1:inds], FUN = function(x) {
+      res <- fread(x)
+      if(is.null(entries) | file.type %in% c("transporters","medium"))
+        return(res)
+
+      if(file.type == "pathways") {
+        entries <- c(entries, paste0("|",entries,"|"))
+        res <- res[ID %in% entries]
+      }
+      if(file.type == "reactions")
+        res <- res[rxn %in% entries]
+      return(res)
+    })
 
   return(out)
 }
