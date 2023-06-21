@@ -1,7 +1,7 @@
 Package: MicrobiomeGS2
 Type: Package
 Title: Analysis and simulation of genome- & ecosystem-scale microbial metabolism
-Version: 0.1.8
+Version: 0.1.9
 Authors@R:
     c(person(given = "Silvio",
              family = "Waschina",

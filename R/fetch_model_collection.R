@@ -16,6 +16,10 @@
 #' @param entries In case 'file.type' is "pathways" or "reactions", the argument
 #' can be used to limit the output to specific pathways or reactions. If `NULL`,
 #' all entries are returned.
+#' @param multi.thread logical. Indicating if parallel processing of models is
+#' used.
+#' @param ncores integer. Number of CPUs that are used in case of parallel
+#' processing. If NULL, the number of available CPUs is detected.
 #'
 #' @return A named (IDs) list of with elements of class `modelorg` (in case of
 #' file.type is 'model' or 'draft') or elements of class `data.table` otherwise.
@@ -24,7 +28,10 @@
 #'
 #' @export
 fetch_model_collection <- function(model.dir, IDs = NULL, file.type = "model",
-                                   subset = NULL, entries = NULL) {
+                                   subset = NULL, entries = NULL,
+                                   multi.thread = TRUE,
+                                   ncores = NULL) {
+  # subset argument for debugging
   if(is.null(subset) || subset < 1)
     subset <- Inf
 
@@ -102,22 +109,39 @@ fetch_model_collection <- function(model.dir, IDs = NULL, file.type = "model",
 
   inds <- min(c(length(mod.files), subset))
 
+  # parallel processing?
+  n.cores <- ifelse(multi.thread, detectCores()-1, 1)
+  if(!is.null(ncores))
+    n.cores <- ncores
+  n.cores <- min(c(n.cores, inds))
+  cl <- makeCluster(max(c(1,n.cores)))
+  clusterExport(cl, c("file.type","entries"), envir=environment())
+
   if(file.type %in% c("draft","model"))
-    out <- lapply(mod.files[1:inds], FUN = readRDS)
+    out <- parLapply(cl, mod.files[1:inds], fun = worker_readRDS)
   if(file.type %in% c("reactions","pathways","transporters","medium"))
-    out <- lapply(mod.files[1:inds], FUN = function(x) {
-      res <- fread(x)
-      if(is.null(entries) | file.type %in% c("transporters","medium"))
-        return(res)
+    out <- parLapply(cl, mod.files[1:inds], fun = worker_fread)
 
-      if(file.type == "pathways") {
-        entries <- c(entries, paste0("|",entries,"|"))
-        res <- res[ID %in% entries]
-      }
-      if(file.type == "reactions")
-        res <- res[rxn %in% entries]
-      return(res)
-    })
-
+  stopCluster(cl)
   return(out)
+}
+
+
+worker_readRDS <- function(x) {
+  return(readRDS(x))
+}
+
+#' @import data.table
+worker_fread <- function(x) {
+  res <- fread(x)
+  if(is.null(entries) | file.type %in% c("transporters","medium"))
+    return(res)
+
+  if(file.type == "pathways") {
+    entries <- c(entries, paste0("|",entries,"|"))
+    res <- res[ID %in% entries]
+  }
+  if(file.type == "reactions")
+    res <- res[rxn %in% entries]
+  return(res)
 }
