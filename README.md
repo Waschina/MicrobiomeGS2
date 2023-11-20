@@ -31,7 +31,7 @@ rm sybilSBML_3.1.2.tar.gz
 
 ## CPLEX support
 
-Download and install cplex from the [IBM homepage](https://www.ibm.com/support/pages/downloading-ibm-ilog-cplex-optimization-studio-v12100). Get the cplexAPI package and link the library.
+Download and install cplex from the [IBM homepage](https://www.ibm.com/support/pages/downloading-ibm-ilog-cplex-optimization-studio-v12100). **Academic users** can get a free licence for CPLEX and [download the software for free](https://github.com/academic-initiative/documentation/blob/main/academic-initiative/how-to/How-to-download-IBM-ILOG-CPLEX/readme.md). Get the cplexAPI package and link the library.
 
 ```sh
 wget https://cran.r-project.org/src/contrib/Archive/cplexAPI/cplexAPI_1.4.0.tar.gz
