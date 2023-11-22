@@ -12,7 +12,7 @@ MicrobiomeGS2 uses the approach of steadycom and ports it to methods implemented
 Install the conda dependencies within a new environment with the name `MicrobiomeGS2`.
 
 ```sh
-curl https://raw.githubusercontent.com/Waschina/MicrobiomeGS2/master/requirements.yml
+wget https://raw.githubusercontent.com/Waschina/MicrobiomeGS2/master/requirements.yml
 conda env create -f requirements.yml
 rm requirements.yml
 conda activate MicrobiomeGS2
