@@ -110,36 +110,3 @@ calc_ppmerr <- function(theo.mz, meas.mz) {
   ppmerr <- (meas.mz - theo.mz) / theo.mz * 1000000
   return(ppmerr)
 }
-
-#' @title Get monoisotopic mass
-#'
-#' @description Get monoisotopic mass from compounds' formula and charge
-#'
-#' @param formula character (vector) with chemical formulas.
-#' @param charge integer (vector) of same length as 'formula' specifying the
-#' compounds charge.
-#'
-#' @return double. exact monoisotopic mass of molecule
-#'
-#' @import Rdisop
-#'
-#' @export
-get_mass <- function(formula, charge = rep(0, length(formula))) {
-  if(length(formula) != length(charge))
-    stop("Unequal length of formula and charge")
-
-  m.e <- 0.00054857990924 # mass electron
-  out <- c()
-
-  for(i in 1:length(formula)){
-    if(is.na(formula[i]) || grepl("R|X|x|Z$",formula[i])) {
-      out[i] <- NA_real_
-    } else {
-      mol      <- Rdisop::getMolecule(formula = formula[i])
-      mol.mass <- Rdisop::getMass(mol)
-      out[i]   <- mol.mass - charge[i] * m.e
-    }
-  }
-  return(out)
-}
-

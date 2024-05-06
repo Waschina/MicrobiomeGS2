@@ -8,7 +8,10 @@ fetch_model_collection(
   model.dir,
   IDs = NULL,
   file.type = "model",
-  subset = NULL
+  subset = NULL,
+  entries = NULL,
+  multi.thread = TRUE,
+  ncores = NULL
 )
 }
 \arguments{
@@ -25,6 +28,16 @@ One of 'model' (gap-filled model), 'draft' (draft network), 'reactions',
 
 \item{subset}{integer. For testing purposes you can choose the maximum number
 of model files to be read.}
+
+\item{entries}{In case 'file.type' is "pathways" or "reactions", the argument
+can be used to limit the output to specific pathways or reactions. If `NULL`,
+all entries are returned.}
+
+\item{multi.thread}{logical. Indicating if parallel processing of models is
+used.}
+
+\item{ncores}{integer. Number of CPUs that are used in case of parallel
+processing. If NULL, the number of available CPUs is detected.}
 }
 \value{
 A named (IDs) list of with elements of class `modelorg` (in case of
