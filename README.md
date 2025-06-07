@@ -1,3 +1,6 @@
+⚠️ Notice: MicrobiomeGS2 is no longer maintained and will be archived soon.
+This package relies on outdated dependencies (sybil, sybilSBML, glpkAPI, and optionally cplexAPI), which are no longer actively maintained, making installation and use increasingly difficult.
+
 # MicrobiomeGS2 
 
 ***constraint-based community metabolic modeling in R***
@@ -31,7 +34,7 @@ rm sybilSBML_3.1.2.tar.gz
 
 ## CPLEX support
 
-Download and install cplex from the [IBM homepage](https://www.ibm.com/support/pages/downloading-ibm-ilog-cplex-optimization-studio-v12100). **Academic users** can get a free licence for CPLEX and [download the software for free](https://github.com/academic-initiative/documentation/blob/main/academic-initiative/how-to/How-to-download-IBM-ILOG-CPLEX/readme.md). Get the cplexAPI package and link the library.
+Download and install cplex from the [IBM homepage](https://www.ibm.com/support/pages/downloading-ibm-ilog-cplex-optimization-studio-v12100). **Academic users** may get a special licence for CPLEX and [download the software here](https://github.com/academic-initiative/documentation/blob/main/academic-initiative/how-to/How-to-download-IBM-ILOG-CPLEX/readme.md). Get the cplexAPI package and link the library.
 
 ```sh
 wget https://cran.r-project.org/src/contrib/Archive/cplexAPI/cplexAPI_1.4.0.tar.gz
